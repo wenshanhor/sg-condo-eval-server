@@ -4,11 +4,13 @@ import dotenv from "dotenv";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import multer from "multer";
 import { UraClient } from "./lib/ura.js";
 import { OneMapClient } from "./lib/onemap.js";
 import { SchoolStore } from "./lib/schools.js";
 import { evaluate } from "./lib/scoring.js";
 import { findNearestMRT, findMRTsWithin } from "./lib/mrt.js";
+import { analyzeFloorPlan } from "./lib/floorplan.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dwellingUnits = JSON.parse(readFileSync(join(__dirname, "lib", "dwelling-units.json"), "utf-8"));
@@ -18,6 +20,8 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const ura = new UraClient(process.env.URA_ACCESS_KEY);
 const onemap = new OneMapClient(process.env.ONEMAP_EMAIL, process.env.ONEMAP_PASSWORD);
@@ -48,6 +52,20 @@ app.get("/api/health", async (req, res) => {
     });
   } catch (err) {
     res.json({ status: "error", error: err.message });
+  }
+});
+
+app.post("/api/analyze-floorplan", upload.single("floorplan"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No floor plan image uploaded" });
+    }
+
+    const result = await analyzeFloorPlan(req.file.buffer, req.file.mimetype);
+    res.json(result);
+  } catch (err) {
+    console.error("Floor plan analysis error:", err);
+    res.status(500).json({ error: err.message || "Floor plan analysis failed" });
   }
 });
 
