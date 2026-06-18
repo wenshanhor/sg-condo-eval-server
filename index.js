@@ -15,7 +15,7 @@ import { analyzeFloorPlan } from "./lib/floorplan.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dwellingUnits = JSON.parse(readFileSync(join(__dirname, "lib", "dwelling-units.json"), "utf-8"));
 
-dotenv.config();
+dotenv.config({ path: join(__dirname, ".env") });
 
 const app = express();
 app.use(cors());
